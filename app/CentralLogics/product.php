@@ -3,14 +3,11 @@
 namespace App\CentralLogics;
 
 
-use App\Model\CategoryDiscount;
-use App\Model\FavoriteProduct;
 use App\Model\Order;
 use App\Model\OrderDetail;
 use App\Model\Product;
 use App\Model\Review;
 use App\User;
-use Illuminate\Support\Facades\DB;
 
 class ProductLogic
 {
@@ -68,11 +65,11 @@ class ProductLogic
             foreach ($key as $value) {
                 $q->orWhere('name', 'like', "%{$value}%");
             }
-            $q->orWhereHas('tags',function($query) use ($key){
-                $query->where(function($q) use ($key){
+            $q->orWhereHas('tags', function ($query) use ($key) {
+                $query->where(function ($q) use ($key) {
                     foreach ($key as $value) {
                         $q->where('tag', 'like', "%{$value}%");
-                    };
+                    }
                 });
             });
         })->paginate($limit, ['*'], 'page', $offset);
@@ -162,7 +159,7 @@ class ProductLogic
 
     public static function get_trending_products($limit = 10, $offset = 1)
     {
-        if(OrderDetail::count() > 0) {
+        if (OrderDetail::count() > 0) {
             $paginator = Product::active()
                 ->with(['rating', 'active_reviews'])
                 ->whereHas('order_details', function ($query) {
@@ -189,7 +186,7 @@ class ProductLogic
 
     public static function get_recommended_products($user, $limit = 10, $offset = 1)
     {
-        if($user != null) {
+        if ($user != null) {
             $order_ids = Order::where('user_id', $user->id)->pluck('id');
             $product_ids = OrderDetail::whereIn('order_id', $order_ids)->pluck('product_id')->toArray();
             $categoryIds = Product::whereIn('id', $product_ids)->pluck('category_ids')->toArray();

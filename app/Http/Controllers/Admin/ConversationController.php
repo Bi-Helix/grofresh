@@ -7,22 +7,24 @@ use App\Http\Controllers\Controller;
 use App\Model\Admin;
 use App\Model\Conversation;
 use App\User;
+use Exception;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
 class ConversationController extends Controller
 {
     public function __construct(
         private Conversation $conversation,
-        private User $user,
+        private User  $user,
         private Admin $admin
-    ){}
+    )
+    {
+    }
 
     /**
      * @return Factory|View|Application
@@ -91,14 +93,14 @@ class ConversationController extends Controller
         $fcm_token = $user->cm_firebase_token;
         $data = [
             'title' => \App\CentralLogics\translate('New message arrived'),
-            'description' => Str::limit($request->reply??'', 500),
+            'description' => Str::limit($request->reply ?? '', 500),
             'order_id' => '',
             'image' => '',
             'type' => 'message'
         ];
         try {
             Helpers::send_push_notif_to_device($fcm_token, $data);
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             //
         }
 
@@ -119,7 +121,7 @@ class ConversationController extends Controller
             $admin->save();
 
             return response()->json(['message' => 'FCM token updated successfully.'], 200);
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return response()->json(['message' => 'FCM token updated failed.'], 200);
         }
     }

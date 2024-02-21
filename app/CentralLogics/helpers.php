@@ -11,9 +11,11 @@ use App\Model\Review;
 use App\User;
 use Exception;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Mpdf\Mpdf;
+use function session;
 
 class Helpers
 {
@@ -57,6 +59,27 @@ class Helpers
         return self::set_price($result);
     }
 
+    public static function set_price($amount)
+    {
+        $decimal_point_settings = Helpers::get_business_settings('decimal_point_settings');
+        $amount = number_format($amount, $decimal_point_settings, '.', '');
+
+        return $amount;
+    }
+
+    public static function get_business_settings($name)
+    {
+        $config = null;
+        $data = BusinessSetting::where(['key' => $name])->first();
+        if (isset($data)) {
+            $config = json_decode($data['value'], true);
+            if (is_null($config)) {
+                $config = $data['value'];
+            }
+        }
+        return $config;
+    }
+
     public static function product_data_formatting($data, $multi_data = false)
     {
         $storage = [];
@@ -69,14 +92,14 @@ class Helpers
                 $item['choice_options'] = json_decode($item['choice_options']);
 
                 $categories = gettype($item['category_ids']) == 'array' ? $item['category_ids'] : json_decode($item['category_ids']);
-                if(!is_null($categories) && count($categories) > 0) {
+                if (!is_null($categories) && count($categories) > 0) {
                     $ids = [];
                     foreach ($categories as $value) {
                         if ($value->position == 1) {
                             $ids[] = $value->id;
                         }
                     }
-                    $item['category_discount']= CategoryDiscount::active()->where('category_id', $ids)->first();
+                    $item['category_discount'] = CategoryDiscount::active()->where('category_id', $ids)->first();
                 } else {
                     $item['category_discount'] = [];
                 }
@@ -112,13 +135,13 @@ class Helpers
 //            $data['choice_options'] = json_decode($data['choice_options']);
 
             $data['category_ids'] = gettype($data['category_ids']) == 'array' ? $data['category_ids'] : json_decode($data['category_ids']);
-            $data['image'] =  gettype($data['image']) == 'array' ? $data['image'] : json_decode($data['image']);
+            $data['image'] = gettype($data['image']) == 'array' ? $data['image'] : json_decode($data['image']);
             $data['attributes'] = gettype($data['attributes']) == 'array' ? $data['attributes'] : json_decode($data['attributes']);
             $data['choice_options'] = gettype($data['choice_options']) == 'array' ? $data['choice_options'] : json_decode($data['choice_options']);
 
             $categories = gettype($data['category_ids']) == 'array' ? $data['category_ids'] : json_decode($data['category_ids'], true);
 
-            if(!is_null($categories) && count($categories) > 0) {
+            if (!is_null($categories) && count($categories) > 0) {
                 $ids = [];
                 foreach ($categories as $value) {
                     $value = (array)$value;
@@ -126,7 +149,7 @@ class Helpers
                         $ids[] = $value['id'];
                     }
                 }
-                $data['category_discount']= CategoryDiscount::active()->where('category_id', $ids)->first();
+                $data['category_discount'] = CategoryDiscount::active()->where('category_id', $ids)->first();
             } else {
                 $data['category_discount'] = [];
             }
@@ -156,31 +179,6 @@ class Helpers
         return $data;
     }
 
-    public static function get_business_settings($name)
-    {
-        $config = null;
-        $data = \App\Model\BusinessSetting::where(['key' => $name])->first();
-        if (isset($data)) {
-            $config = json_decode($data['value'], true);
-            if (is_null($config)) {
-                $config = $data['value'];
-            }
-        }
-        return $config;
-    }
-
-    public static function currency_code()
-    {
-        $currency_code = BusinessSetting::where(['key' => 'currency'])->first()->value;
-        return $currency_code;
-    }
-
-    public static function currency_symbol()
-    {
-        $currency_symbol = Currency::where(['currency_code' => Helpers::currency_code()])->first()->currency_symbol;
-        return $currency_symbol;
-    }
-
     public static function set_symbol($amount)
     {
         $decimal_point_settings = Helpers::get_business_settings('decimal_point_settings');
@@ -193,12 +191,16 @@ class Helpers
         return $string;
     }
 
-    public static function set_price($amount)
+    public static function currency_symbol()
     {
-        $decimal_point_settings = Helpers::get_business_settings('decimal_point_settings');
-        $amount = number_format($amount, $decimal_point_settings, '.', '');
+        $currency_symbol = Currency::where(['currency_code' => Helpers::currency_code()])->first()->currency_symbol;
+        return $currency_symbol;
+    }
 
-        return $amount;
+    public static function currency_code()
+    {
+        $currency_code = BusinessSetting::where(['key' => 'currency'])->first()->value;
+        return $currency_code;
     }
 
     public static function send_push_notif_to_device($fcm_token, $data)
@@ -340,7 +342,7 @@ class Helpers
     public static function category_discount_calculate($category_id, $price)
     {
         $category_discount = CategoryDiscount::active()->where(['category_id' => $category_id])->first();
-        if ($category_discount){
+        if ($category_discount) {
             if ($category_discount['discount_type'] == 'percent') {
                 $price_discount = ($price / 100) * $category_discount['discount_amount'];
                 if ($category_discount['maximum_amount'] < $price_discount) {
@@ -349,7 +351,7 @@ class Helpers
             } else {
                 $price_discount = $category_discount['discount_amount'];
             }
-        }else{
+        } else {
             $price_discount = 0;
         }
         return self::set_price($price_discount);
@@ -417,9 +419,9 @@ class Helpers
             $data = self::get_business_settings('delivery_boy_start_message');
         } elseif ($status == 'returned') {
             $data = self::get_business_settings('returned_message');
-        }  elseif ($status == 'failed') {
+        } elseif ($status == 'failed') {
             $data = self::get_business_settings('failed_message');
-        }  elseif ($status == 'canceled') {
+        } elseif ($status == 'canceled') {
             $data = self::get_business_settings('canceled_message');
         } elseif ($status == 'customer_notify_message') {
             $data = self::get_business_settings('customer_notify_message');
@@ -632,9 +634,9 @@ class Helpers
     {
         $data = self::get_business_settings('language');
         $default_lang = 'en';
-        if($data && array_key_exists('code', $data)) {
+        if ($data && array_key_exists('code', $data)) {
             foreach ($data as $lang) {
-                if($lang['default'] == true) {
+                if ($lang['default'] == true) {
                     $default_lang = $lang['code'];
                 }
             }
@@ -643,28 +645,13 @@ class Helpers
         return $default_lang;
     }
 
-    public static function upload(string $dir, string $format, $image = null)
-    {
-        if ($image != null) {
-            $imageName = \Carbon\Carbon::now()->toDateString() . "-" . uniqid() . "." . $format;
-            if (!Storage::disk('public')->exists($dir)) {
-                Storage::disk('public')->makeDirectory($dir);
-            }
-            Storage::disk('public')->put($dir . $imageName, file_get_contents($image));
-        } else {
-            $imageName = 'def.png';
-        }
-
-        return $imageName;
-    }
-
     public static function language_load()
     {
-        if (\session()->has('language_settings')) {
-            $language = \session('language_settings');
+        if (session()->has('language_settings')) {
+            $language = session('language_settings');
         } else {
             $language = BusinessSetting::where('key', 'language')->first();
-            \session()->put('language_settings', $language);
+            session()->put('language_settings', $language);
         }
         return $language;
     }
@@ -689,6 +676,21 @@ class Helpers
         ];
     }
 
+    public static function upload(string $dir, string $format, $image = null)
+    {
+        if ($image != null) {
+            $imageName = \Carbon\Carbon::now()->toDateString() . "-" . uniqid() . "." . $format;
+            if (!Storage::disk('public')->exists($dir)) {
+                Storage::disk('public')->makeDirectory($dir);
+            }
+            Storage::disk('public')->put($dir . $imageName, file_get_contents($image));
+        } else {
+            $imageName = 'def.png';
+        }
+
+        return $imageName;
+    }
+
     public static function setEnvironmentValue($envKey, $envValue)
     {
         $envFile = app()->environmentFilePath();
@@ -711,11 +713,11 @@ class Helpers
         return $envValue;
     }
 
-    public static function requestSender($request):array
+    public static function requestSender($request): array
     {
-		return [
-			'active' => 1
-		];
+        return [
+            'active' => 1
+        ];
     }
 
     public static function getPagination()
@@ -775,7 +777,8 @@ class Helpers
         return true;
     }
 
-    public static function generate_referer_code() {
+    public static function generate_referer_code()
+    {
         $ref_code = Str::random('20');
         if (User::where('referral_code', '=', $ref_code)->exists()) {
             return generate_referer_code();
@@ -785,7 +788,7 @@ class Helpers
 
     public static function gen_mpdf($view, $file_prefix, $file_postfix)
     {
-        $mpdf = new \Mpdf\Mpdf(['default_font' => 'FreeSerif', 'mode' => 'utf-8', 'format' => [190, 250]]);
+        $mpdf = new Mpdf(['default_font' => 'FreeSerif', 'mode' => 'utf-8', 'format' => [190, 250]]);
         $mpdf->autoScriptToLang = true;
         $mpdf->autoLangToFont = true;
         $mpdf_view = $view;
@@ -794,24 +797,24 @@ class Helpers
         $mpdf->Output($file_prefix . $file_postfix . '.pdf', 'D');
     }
 
-    public static function text_variable_data_format($value,$user_name=null,$store_name=null,$delivery_man_name=null,$transaction_id=null,$order_id=null)
+    public static function text_variable_data_format($value, $user_name = null, $store_name = null, $delivery_man_name = null, $transaction_id = null, $order_id = null)
     {
         $data = $value;
         if ($value) {
-            if($user_name){
-                $data =  str_replace("{userName}", $user_name, $data);
+            if ($user_name) {
+                $data = str_replace("{userName}", $user_name, $data);
             }
 
-            if($store_name){
-                $data =  str_replace("{storeName}", $store_name, $data);
+            if ($store_name) {
+                $data = str_replace("{storeName}", $store_name, $data);
             }
 
-            if($delivery_man_name){
-                $data =  str_replace("{deliveryManName}", $delivery_man_name, $data);
+            if ($delivery_man_name) {
+                $data = str_replace("{deliveryManName}", $delivery_man_name, $data);
             }
 
-            if($order_id){
-                $data =  str_replace("{orderId}", $order_id, $data);
+            if ($order_id) {
+                $data = str_replace("{orderId}", $order_id, $data);
             }
         }
         return $data;
@@ -845,11 +848,11 @@ class Helpers
             $data = 'customer_notify_message';
         } elseif ($status == 'deliveryman_order_processing') {
             $data = 'deliveryman_order_processing_message';
-        }elseif ($status == 'add_fund_wallet') {
+        } elseif ($status == 'add_fund_wallet') {
             $data = 'add_fund_wallet_message';
-        }elseif ($status == 'add_fund_wallet_bonus') {
+        } elseif ($status == 'add_fund_wallet_bonus') {
             $data = 'add_fund_wallet_bonus_message';
-        }  else {
+        } else {
             $data = $status;
         }
 
@@ -864,7 +867,7 @@ function translate($key)
     $local = session()->has('local') ? session('local') : 'en';
     App::setLocale($local);
 
-    try{
+    try {
         $lang_array = include(base_path('resources/lang/' . $local . '/messages.php'));
         $processed_key = ucfirst(str_replace('_', ' ', Helpers::remove_invalid_charcaters($key)));
 
@@ -876,7 +879,7 @@ function translate($key)
         } else {
             $result = __('messages.' . $key);
         }
-    }catch(Exception $exception){
+    } catch (Exception $exception) {
         $result = __('messages.' . $key);
     }
 

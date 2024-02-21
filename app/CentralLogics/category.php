@@ -12,11 +12,6 @@ class CategoryLogic
         return Category::where('position', 0)->get();
     }
 
-    public static function child($parent_id)
-    {
-        return Category::where(['parent_id' => $parent_id])->get();
-    }
-
     public static function products($category_id)
     {
         $products = Product::active()->get();
@@ -33,12 +28,12 @@ class CategoryLogic
 
     public static function all_products($id)
     {
-        $cate_ids=[];
-        array_push($cate_ids,(int)$id);
-        foreach (CategoryLogic::child($id) as $ch1){
-            array_push($cate_ids,$ch1['id']);
-            foreach (CategoryLogic::child($ch1['id']) as $ch2){
-                array_push($cate_ids,$ch2['id']);
+        $cate_ids = [];
+        array_push($cate_ids, (int)$id);
+        foreach (CategoryLogic::child($id) as $ch1) {
+            array_push($cate_ids, $ch1['id']);
+            foreach (CategoryLogic::child($ch1['id']) as $ch2) {
+                array_push($cate_ids, $ch2['id']);
             }
         }
 
@@ -46,12 +41,17 @@ class CategoryLogic
         $product_ids = [];
         foreach ($products as $product) {
             foreach (json_decode($product['category_ids'], true) as $category) {
-                if (in_array($category['id'],$cate_ids)) {
+                if (in_array($category['id'], $cate_ids)) {
                     array_push($product_ids, $product['id']);
                 }
             }
         }
 
         return Product::active()->withCount(['wishlist'])->with('rating', 'active_reviews')->whereIn('id', $product_ids)->get();
+    }
+
+    public static function child($parent_id)
+    {
+        return Category::where(['parent_id' => $parent_id])->get();
     }
 }

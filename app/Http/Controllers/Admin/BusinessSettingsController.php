@@ -4,20 +4,22 @@ namespace App\Http\Controllers\Admin;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Mail\TestEmailSender;
 use App\Model\Branch;
-use App\Model\Translation;
 use App\Model\BusinessSetting;
 use App\Model\Currency;
 use App\Model\SocialMedia;
-use App\Model\TimeSlot;
+use App\Model\Translation;
 use App\Models\AddonSetting;
 use Brian2694\Toastr\Facades\Toastr;
+use Exception;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Redirector;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
@@ -26,9 +28,11 @@ class BusinessSettingsController extends Controller
 {
     public function __construct(
         private BusinessSetting $business_settings
-    ){}
+    )
+    {
+    }
 
-    public function restaurant_index(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function restaurant_index(): Factory|View|Application
     {
         if (!$this->business_settings->where(['key' => 'fav_icon'])->first()) {
             DB::table('business_settings')->updateOrInsert(['key' => 'fav_icon'], [
@@ -39,7 +43,7 @@ class BusinessSettingsController extends Controller
         return view('admin-views.business-settings.restaurant-index');
     }
 
-    public function delivery_index(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function delivery_index(): Factory|View|Application
     {
         if (!$this->business_settings->where(['key' => 'minimum_order_value'])->first()) {
             DB::table('business_settings')->updateOrInsert(['key' => 'minimum_order_value'], [
@@ -50,19 +54,19 @@ class BusinessSettingsController extends Controller
         return view('admin-views.business-settings.delivery-fee');
     }
 
-    public function maintenance_mode(): \Illuminate\Http\JsonResponse
+    public function maintenance_mode(): JsonResponse
     {
         $mode = Helpers::get_business_settings('maintenance_mode');
         DB::table('business_settings')->updateOrInsert(['key' => 'maintenance_mode'], [
             'value' => isset($mode) ? !$mode : 1
         ]);
-        if (!$mode){
+        if (!$mode) {
             return response()->json(['message' => translate('Maintenance Mode is On.')]);
         }
         return response()->json(['message' => translate('Maintenance Mode is Off.')]);
     }
 
-    public function currency_symbol_position($side): \Illuminate\Http\JsonResponse
+    public function currency_symbol_position($side): JsonResponse
     {
         DB::table('business_settings')->updateOrInsert(['key' => 'currency_symbol_position'], [
             'value' => $side
@@ -70,11 +74,11 @@ class BusinessSettingsController extends Controller
         return response()->json(['message' => 'Symbol position is ' . $side]);
     }
 
-    public function phone_verification_status($status): \Illuminate\Http\JsonResponse
+    public function phone_verification_status($status): JsonResponse
     {
-        $email_status = DB::table('business_settings')->where('key','email_verification')->first()->value;
+        $email_status = DB::table('business_settings')->where('key', 'email_verification')->first()->value;
 
-        if ($email_status == 1){
+        if ($email_status == 1) {
             return response()->json([
                 'status' => 0,
                 'message' => 'Both email and phone verification can not be active at a time!'
@@ -91,11 +95,11 @@ class BusinessSettingsController extends Controller
         ]);
     }
 
-    public function email_verification_status($status): \Illuminate\Http\JsonResponse
+    public function email_verification_status($status): JsonResponse
     {
-        $phone_status = DB::table('business_settings')->where('key','phone_verification')->first()->value;
+        $phone_status = DB::table('business_settings')->where('key', 'phone_verification')->first()->value;
 
-        if ($phone_status == 1){
+        if ($phone_status == 1) {
             return response()->json([
                 'status' => 0,
                 'message' => 'Both email and phone verification can not be active at a time!'
@@ -112,7 +116,7 @@ class BusinessSettingsController extends Controller
         ]);
     }
 
-    public function self_pickup_status($status): \Illuminate\Http\JsonResponse
+    public function self_pickup_status($status): JsonResponse
     {
         DB::table('business_settings')->updateOrInsert(['key' => 'self_pickup'], [
             'value' => $status
@@ -120,7 +124,7 @@ class BusinessSettingsController extends Controller
         return response()->json(['message' => 'Pickup status updated']);
     }
 
-    public function dm_self_registration_status($status): \Illuminate\Http\JsonResponse
+    public function dm_self_registration_status($status): JsonResponse
     {
         DB::table('business_settings')->updateOrInsert(['key' => 'dm_self_registration'], [
             'value' => $status
@@ -152,7 +156,7 @@ class BusinessSettingsController extends Controller
         return response()->json(['message' => 'partial payment status updated']);
     }
 
-    public function max_amount_status($status): \Illuminate\Http\JsonResponse
+    public function max_amount_status($status): JsonResponse
     {
         DB::table('business_settings')->updateOrInsert(['key' => 'maximum_amount_for_cod_order_status'], [
             'value' => $status
@@ -163,7 +167,8 @@ class BusinessSettingsController extends Controller
             'message' => 'status updated'
         ]);
     }
-    public function free_delivery_status($status): \Illuminate\Http\JsonResponse
+
+    public function free_delivery_status($status): JsonResponse
     {
         DB::table('business_settings')->updateOrInsert(['key' => 'free_delivery_over_amount_status'], [
             'value' => $status
@@ -175,7 +180,7 @@ class BusinessSettingsController extends Controller
         ]);
     }
 
-    public function restaurant_setup(Request $request): \Illuminate\Http\RedirectResponse
+    public function restaurant_setup(Request $request): RedirectResponse
     {
         DB::table('business_settings')->updateOrInsert(['key' => 'country'], [
             'value' => $request['country']
@@ -232,7 +237,6 @@ class BusinessSettingsController extends Controller
         ]);
 
 
-
         DB::table('business_settings')->updateOrInsert(['key' => 'partial_payment_combine_with'], [
             'value' => $request['partial_payment_combine_with'],
         ]);
@@ -246,43 +250,43 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    public function mail_index(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function mail_index(): Factory|View|Application
     {
         return view('admin-views.business-settings.mail-index');
     }
 
-    public function mail_send(Request $request): \Illuminate\Http\JsonResponse
+    public function mail_send(Request $request): JsonResponse
     {
         $response_flag = 0;
         try {
             $emailServices = Helpers::get_business_settings('mail_config');
 
             if (isset($emailServices['status']) && $emailServices['status'] == 1) {
-                Mail::to($request->email)->send(new \App\Mail\TestEmailSender());
+                Mail::to($request->email)->send(new TestEmailSender());
                 $response_flag = 1;
             }
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             $response_flag = 2;
         }
 
         return response()->json(['success' => $response_flag]);
     }
 
-    public function mail_config(Request $request): \Illuminate\Http\RedirectResponse
+    public function mail_config(Request $request): RedirectResponse
     {
         $data = Helpers::get_business_settings('mail_config');
 
         $this->business_settings->where(['key' => 'mail_config'])->update([
             'value' => json_encode([
                 "status" => $data['status'],
-                "name"       => $request['name'],
-                "host"       => $request['host'],
-                "driver"     => $request['driver'],
-                "port"       => $request['port'],
-                "username"   => $request['username'],
-                "email_id"   => $request['email'],
+                "name" => $request['name'],
+                "host" => $request['host'],
+                "driver" => $request['driver'],
+                "port" => $request['port'],
+                "username" => $request['username'],
+                "email_id" => $request['email'],
                 "encryption" => $request['encryption'],
-                "password"   => $request['password'],
+                "password" => $request['password'],
             ]),
         ]);
         Toastr::success(translate('Configuration updated successfully!'));
@@ -290,7 +294,7 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    public function mail_config_status($status): \Illuminate\Http\JsonResponse
+    public function mail_config_status($status): JsonResponse
     {
         $data = Helpers::get_business_settings('mail_config');
         $data['status'] = $status == '1' ? 1 : 0;
@@ -301,7 +305,7 @@ class BusinessSettingsController extends Controller
         return response()->json(['message' => 'Mail config status updated']);
     }
 
-    public function payment_index(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function payment_index(): Factory|View|Application
     {
         $published_status = 0; // Set a default value
         $payment_published_status = config('get_payment_publish_status');
@@ -323,21 +327,21 @@ class BusinessSettingsController extends Controller
         }
 
         $data_values = AddonSetting::whereIn('settings_type', ['payment_config'])
-            ->whereIn('key_name', ['ssl_commerz','paypal','stripe','razor_pay','senang_pay','paystack','paymob_accept','flutterwave','bkash','mercadopago'])
+            ->whereIn('key_name', ['ssl_commerz', 'paypal', 'stripe', 'razor_pay', 'senang_pay', 'paystack', 'paymob_accept', 'flutterwave', 'bkash', 'mercadopago'])
             ->get();
 
         return view('admin-views.business-settings.payment-index', compact('published_status', 'payment_url', 'data_values'));
     }
 
-    public function payment_update(Request $request, $name): \Illuminate\Http\RedirectResponse
+    public function payment_update(Request $request, $name): RedirectResponse
     {
 
         if ($name == 'cash_on_delivery') {
             $payment = $this->business_settings->where('key', 'cash_on_delivery')->first();
             if (!isset($payment)) {
                 DB::table('business_settings')->insert([
-                    'key'        => 'cash_on_delivery',
-                    'value'      => json_encode([
+                    'key' => 'cash_on_delivery',
+                    'value' => json_encode([
                         'status' => $request['status'],
                     ]),
                     'created_at' => now(),
@@ -345,8 +349,8 @@ class BusinessSettingsController extends Controller
                 ]);
             } else {
                 DB::table('business_settings')->where(['key' => 'cash_on_delivery'])->update([
-                    'key'        => 'cash_on_delivery',
-                    'value'      => json_encode([
+                    'key' => 'cash_on_delivery',
+                    'value' => json_encode([
                         'status' => $request['status'],
                     ]),
                     'updated_at' => now(),
@@ -356,8 +360,8 @@ class BusinessSettingsController extends Controller
             $payment = $this->business_settings->where('key', 'digital_payment')->first();
             if (!isset($payment)) {
                 DB::table('business_settings')->insert([
-                    'key'        => 'digital_payment',
-                    'value'      => json_encode([
+                    'key' => 'digital_payment',
+                    'value' => json_encode([
                         'status' => $request['status'],
                     ]),
                     'created_at' => now(),
@@ -365,8 +369,8 @@ class BusinessSettingsController extends Controller
                 ]);
             } else {
                 DB::table('business_settings')->where(['key' => 'digital_payment'])->update([
-                    'key'        => 'digital_payment',
-                    'value'      => json_encode([
+                    'key' => 'digital_payment',
+                    'value' => json_encode([
                         'status' => $request['status'],
                     ]),
                     'updated_at' => now(),
@@ -376,8 +380,8 @@ class BusinessSettingsController extends Controller
             $payment = $this->business_settings->where('key', 'offline_payment')->first();
             if (!isset($payment)) {
                 DB::table('business_settings')->insert([
-                    'key'        => 'offline_payment',
-                    'value'      => json_encode([
+                    'key' => 'offline_payment',
+                    'value' => json_encode([
                         'status' => $request['status'],
                     ]),
                     'created_at' => now(),
@@ -385,21 +389,21 @@ class BusinessSettingsController extends Controller
                 ]);
             } else {
                 DB::table('business_settings')->where(['key' => 'offline_payment'])->update([
-                    'key'        => 'offline_payment',
-                    'value'      => json_encode([
+                    'key' => 'offline_payment',
+                    'value' => json_encode([
                         'status' => $request['status'],
                     ]),
                     'updated_at' => now(),
                 ]);
             }
-        }elseif ($name == 'ssl_commerz_payment') {
+        } elseif ($name == 'ssl_commerz_payment') {
             $payment = $this->business_settings->where('key', 'ssl_commerz_payment')->first();
             if (!isset($payment)) {
                 DB::table('business_settings')->insert([
-                    'key'        => 'ssl_commerz_payment',
-                    'value'      => json_encode([
-                        'status'         => 1,
-                        'store_id'       => '',
+                    'key' => 'ssl_commerz_payment',
+                    'value' => json_encode([
+                        'status' => 1,
+                        'store_id' => '',
                         'store_password' => '',
                     ]),
                     'created_at' => now(),
@@ -407,10 +411,10 @@ class BusinessSettingsController extends Controller
                 ]);
             } else {
                 DB::table('business_settings')->where(['key' => 'ssl_commerz_payment'])->update([
-                    'key'        => 'ssl_commerz_payment',
-                    'value'      => json_encode([
-                        'status'         => $request['status'],
-                        'store_id'       => $request['store_id'],
+                    'key' => 'ssl_commerz_payment',
+                    'value' => json_encode([
+                        'status' => $request['status'],
+                        'store_id' => $request['store_id'],
                         'store_password' => $request['store_password'],
                     ]),
                     'updated_at' => now(),
@@ -420,10 +424,10 @@ class BusinessSettingsController extends Controller
             $payment = $this->business_settings->where('key', 'razor_pay')->first();
             if (!isset($payment)) {
                 DB::table('business_settings')->insert([
-                    'key'        => 'razor_pay',
-                    'value'      => json_encode([
-                        'status'       => 1,
-                        'razor_key'    => '',
+                    'key' => 'razor_pay',
+                    'value' => json_encode([
+                        'status' => 1,
+                        'razor_key' => '',
                         'razor_secret' => '',
                     ]),
                     'created_at' => now(),
@@ -431,10 +435,10 @@ class BusinessSettingsController extends Controller
                 ]);
             } else {
                 DB::table('business_settings')->where(['key' => 'razor_pay'])->update([
-                    'key'        => 'razor_pay',
-                    'value'      => json_encode([
-                        'status'       => $request['status'],
-                        'razor_key'    => $request['razor_key'],
+                    'key' => 'razor_pay',
+                    'value' => json_encode([
+                        'status' => $request['status'],
+                        'razor_key' => $request['razor_key'],
                         'razor_secret' => $request['razor_secret'],
                     ]),
                     'updated_at' => now(),
@@ -444,22 +448,22 @@ class BusinessSettingsController extends Controller
             $payment = $this->business_settings->where('key', 'paypal')->first();
             if (!isset($payment)) {
                 DB::table('business_settings')->insert([
-                    'key'        => 'paypal',
-                    'value'      => json_encode([
-                        'status'           => 1,
+                    'key' => 'paypal',
+                    'value' => json_encode([
+                        'status' => 1,
                         'paypal_client_id' => '',
-                        'paypal_secret'    => '',
+                        'paypal_secret' => '',
                     ]),
                     'created_at' => now(),
                     'updated_at' => now(),
                 ]);
             } else {
                 DB::table('business_settings')->where(['key' => 'paypal'])->update([
-                    'key'        => 'paypal',
-                    'value'      => json_encode([
-                        'status'           => $request['status'],
+                    'key' => 'paypal',
+                    'value' => json_encode([
+                        'status' => $request['status'],
                         'paypal_client_id' => $request['paypal_client_id'],
-                        'paypal_secret'    => $request['paypal_secret'],
+                        'paypal_secret' => $request['paypal_secret'],
                     ]),
                     'updated_at' => now(),
                 ]);
@@ -468,10 +472,10 @@ class BusinessSettingsController extends Controller
             $payment = $this->business_settings->where('key', 'stripe')->first();
             if (!isset($payment)) {
                 DB::table('business_settings')->insert([
-                    'key'        => 'stripe',
-                    'value'      => json_encode([
-                        'status'        => 1,
-                        'api_key'       => '',
+                    'key' => 'stripe',
+                    'value' => json_encode([
+                        'status' => 1,
+                        'api_key' => '',
                         'published_key' => '',
                     ]),
                     'created_at' => now(),
@@ -479,10 +483,10 @@ class BusinessSettingsController extends Controller
                 ]);
             } else {
                 DB::table('business_settings')->where(['key' => 'stripe'])->update([
-                    'key'        => 'stripe',
-                    'value'      => json_encode([
-                        'status'        => $request['status'],
-                        'api_key'       => $request['api_key'],
+                    'key' => 'stripe',
+                    'value' => json_encode([
+                        'status' => $request['status'],
+                        'api_key' => $request['api_key'],
                         'published_key' => $request['published_key'],
                     ]),
                     'updated_at' => now(),
@@ -492,10 +496,10 @@ class BusinessSettingsController extends Controller
             $payment = $this->business_settings->where('key', 'senang_pay')->first();
             if (!isset($payment)) {
                 DB::table('business_settings')->insert([
-                    'key'        => 'senang_pay',
-                    'value'      => json_encode([
-                        'status'      => 1,
-                        'secret_key'  => '',
+                    'key' => 'senang_pay',
+                    'value' => json_encode([
+                        'status' => 1,
+                        'secret_key' => '',
                         'merchant_id' => '',
                     ]),
                     'created_at' => now(),
@@ -503,16 +507,16 @@ class BusinessSettingsController extends Controller
                 ]);
             } else {
                 DB::table('business_settings')->where(['key' => 'senang_pay'])->update([
-                    'key'        => 'senang_pay',
-                    'value'      => json_encode([
-                        'status'      => $request['status'],
-                        'secret_key'  => $request['secret_key'],
+                    'key' => 'senang_pay',
+                    'value' => json_encode([
+                        'status' => $request['status'],
+                        'secret_key' => $request['secret_key'],
                         'merchant_id' => $request['merchant_id'],
                     ]),
                     'updated_at' => now(),
                 ]);
             }
-        }elseif ($name == 'paystack') {
+        } elseif ($name == 'paystack') {
             $payment = $this->business_settings->where('key', 'paystack')->first();
             if (!isset($payment)) {
                 DB::table('business_settings')->insert([
@@ -577,7 +581,7 @@ class BusinessSettingsController extends Controller
                     'access_token' => $request['access_token']
                 ])
             ]);
-        }else if ($name == '6cash') {
+        } else if ($name == '6cash') {
             DB::table('business_settings')->updateOrInsert(['key' => '6cash'], [
                 'value' => json_encode([
                     'status' => $request['status'],
@@ -634,7 +638,7 @@ class BusinessSettingsController extends Controller
                 'secret_key' => 'required_if:status,1',
                 'merchant_id' => 'required_if:status,1'
             ];
-        }elseif ($request['gateway'] == 'paystack') {
+        } elseif ($request['gateway'] == 'paystack') {
             $additional_data = [
                 'status' => 'required|in:1,0',
                 'public_key' => 'required_if:status,1',
@@ -663,7 +667,7 @@ class BusinessSettingsController extends Controller
                 'public_key' => 'required_if:status,1',
                 'hash' => 'required_if:status,1'
             ];
-        }  elseif ($request['gateway'] == 'bkash') {
+        } elseif ($request['gateway'] == 'bkash') {
             $additional_data = [
                 'status' => 'required|in:1,0',
                 'app_key' => 'required_if:status,1',
@@ -708,65 +712,65 @@ class BusinessSettingsController extends Controller
     }
 
 
-    public function currency_index(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function currency_index(): Factory|View|Application
     {
         return view('admin-views.business-settings.currency-index');
     }
 
-    public function currency_store(Request $request): \Illuminate\Http\RedirectResponse
+    public function currency_store(Request $request): RedirectResponse
     {
         $request->validate([
             'currency_code' => 'required|unique:currencies',
         ]);
 
         Currency::create([
-            "country"         => $request['country'],
-            "currency_code"   => $request['currency_code'],
+            "country" => $request['country'],
+            "currency_code" => $request['currency_code'],
             "currency_symbol" => $request['symbol'],
-            "exchange_rate"   => $request['exchange_rate'],
+            "exchange_rate" => $request['exchange_rate'],
         ]);
         Toastr::success(translate('Currency added successfully!'));
         return back();
     }
 
-    public function currency_edit($id): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function currency_edit($id): Factory|View|Application
     {
         $currency = Currency::find($id);
         return view('admin-views.business-settings.currency-update', compact('currency'));
     }
 
-    public function currency_update(Request $request, $id): \Illuminate\Routing\Redirector|\Illuminate\Contracts\Foundation\Application|\Illuminate\Http\RedirectResponse
+    public function currency_update(Request $request, $id): Redirector|Application|RedirectResponse
     {
         Currency::where(['id' => $id])->update([
-            "country"         => $request['country'],
-            "currency_code"   => $request['currency_code'],
+            "country" => $request['country'],
+            "currency_code" => $request['currency_code'],
             "currency_symbol" => $request['symbol'],
-            "exchange_rate"   => $request['exchange_rate'],
+            "exchange_rate" => $request['exchange_rate'],
         ]);
         Toastr::success(translate('Currency updated successfully!'));
         return redirect('admin/business-settings/currency-add');
     }
 
-    public function currency_delete($id): \Illuminate\Http\RedirectResponse
+    public function currency_delete($id): RedirectResponse
     {
         Currency::where(['id' => $id])->delete();
         Toastr::success(translate('Currency removed successfully!'));
         return back();
     }
 
-    public function terms_and_conditions(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function terms_and_conditions(): Factory|View|Application
     {
         $tnc = $this->business_settings->where(['key' => 'terms_and_conditions'])->first();
         if (!$tnc) {
             $this->business_settings->insert([
-                'key'   => 'terms_and_conditions',
+                'key' => 'terms_and_conditions',
                 'value' => '',
             ]);
         }
         return view('admin-views.business-settings.terms-and-conditions', compact('tnc'));
     }
 
-    public function terms_and_conditions_update(Request $request): \Illuminate\Http\RedirectResponse
+    public function terms_and_conditions_update(Request $request): RedirectResponse
     {
         $this->business_settings->where(['key' => 'terms_and_conditions'])->update([
             'value' => $request->tnc,
@@ -775,7 +779,7 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    public function privacy_policy(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function privacy_policy(): Factory|View|Application
     {
         $data = $this->business_settings->where(['key' => 'privacy_policy'])->first();
         if (!$data) {
@@ -788,7 +792,7 @@ class BusinessSettingsController extends Controller
         return view('admin-views.business-settings.privacy-policy', compact('data'));
     }
 
-    public function privacy_policy_update(Request $request): \Illuminate\Http\RedirectResponse
+    public function privacy_policy_update(Request $request): RedirectResponse
     {
         $this->business_settings->where(['key' => 'privacy_policy'])->update([
             'value' => $request->privacy_policy,
@@ -798,7 +802,7 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    public function about_us(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function about_us(): Factory|View|Application
     {
         $data = $this->business_settings->where(['key' => 'about_us'])->first();
         if (!$data) {
@@ -811,7 +815,7 @@ class BusinessSettingsController extends Controller
         return view('admin-views.business-settings.about-us', compact('data'));
     }
 
-    public function about_us_update(Request $request): \Illuminate\Http\RedirectResponse
+    public function about_us_update(Request $request): RedirectResponse
     {
         $this->business_settings->where(['key' => 'about_us'])->update([
             'value' => $request->about_us,
@@ -821,7 +825,7 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    public function faq(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function faq(): Factory|View|Application
     {
         $data = $this->business_settings->where(['key' => 'faq'])->first();
         if (!$data) {
@@ -834,7 +838,7 @@ class BusinessSettingsController extends Controller
         return view('admin-views.business-settings.faq', compact('data'));
     }
 
-    public function faq_update(Request $request): \Illuminate\Http\RedirectResponse
+    public function faq_update(Request $request): RedirectResponse
     {
         $this->business_settings->where(['key' => 'faq'])->update([
             'value' => $request->faq,
@@ -844,7 +848,7 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    public function cancellation_policy(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function cancellation_policy(): Factory|View|Application
     {
         $data = $this->business_settings->where(['key' => 'cancellation_policy'])->first();
         $status = $this->business_settings->where(['key' => 'cancellation_policy_status'])->first();
@@ -865,7 +869,7 @@ class BusinessSettingsController extends Controller
         return view('admin-views.business-settings.cancellation-policy', compact('data', 'status'));
     }
 
-    public function cancellation_policy_update(Request $request): \Illuminate\Http\RedirectResponse
+    public function cancellation_policy_update(Request $request): RedirectResponse
     {
         $this->business_settings->where(['key' => 'cancellation_policy'])->update([
             'value' => $request->cancellation_policy,
@@ -875,7 +879,7 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    public function cancellation_policy_status(Request $request): \Illuminate\Http\RedirectResponse
+    public function cancellation_policy_status(Request $request): RedirectResponse
     {
         $this->business_settings->where(['key' => 'cancellation_policy_status'])->update([
             'value' => $request->status,
@@ -884,7 +888,7 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    public function refund_policy(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function refund_policy(): Factory|View|Application
     {
         $data = $this->business_settings->where(['key' => 'refund_policy'])->first();
         $status = $this->business_settings->where(['key' => 'refund_policy_status'])->first();
@@ -905,7 +909,7 @@ class BusinessSettingsController extends Controller
         return view('admin-views.business-settings.refund-policy', compact('data', 'status'));
     }
 
-    public function refund_policy_update(Request $request): \Illuminate\Http\RedirectResponse
+    public function refund_policy_update(Request $request): RedirectResponse
     {
         $this->business_settings->where(['key' => 'refund_policy'])->update([
             'value' => $request->refund_policy,
@@ -915,7 +919,7 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    public function refund_policy_status(Request $request): \Illuminate\Http\RedirectResponse
+    public function refund_policy_status(Request $request): RedirectResponse
     {
         $this->business_settings->where(['key' => 'refund_policy_status'])->update([
             'value' => $request->status,
@@ -924,7 +928,7 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    public function return_policy(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function return_policy(): Factory|View|Application
     {
         $data = $this->business_settings->where(['key' => 'return_policy'])->first();
         $status = $this->business_settings->where(['key' => 'return_policy_status'])->first();
@@ -946,7 +950,7 @@ class BusinessSettingsController extends Controller
         return view('admin-views.business-settings.return-policy', compact('data', 'status'));
     }
 
-    public function return_policy_update(Request $request): \Illuminate\Http\RedirectResponse
+    public function return_policy_update(Request $request): RedirectResponse
     {
         $this->business_settings->where(['key' => 'return_policy'])->update([
             'value' => $request->return_policy,
@@ -956,7 +960,7 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    public function return_policy_status(Request $request): \Illuminate\Http\RedirectResponse
+    public function return_policy_status(Request $request): RedirectResponse
     {
         $this->business_settings->where(['key' => 'return_policy_status'])->update([
             'value' => $request->status,
@@ -973,9 +977,9 @@ class BusinessSettingsController extends Controller
     {
         if (!$this->business_settings->where(['key' => 'order_pending_message'])->first()) {
             $this->business_settings->insert([
-                'key'   => 'order_pending_message',
+                'key' => 'order_pending_message',
                 'value' => json_encode([
-                    'status'  => 0,
+                    'status' => 0,
                     'message' => '',
                 ]),
             ]);
@@ -983,9 +987,9 @@ class BusinessSettingsController extends Controller
 
         if (!$this->business_settings->where(['key' => 'order_confirmation_msg'])->first()) {
             $this->business_settings->insert([
-                'key'   => 'order_confirmation_msg',
+                'key' => 'order_confirmation_msg',
                 'value' => json_encode([
-                    'status'  => 0,
+                    'status' => 0,
                     'message' => '',
                 ]),
             ]);
@@ -993,9 +997,9 @@ class BusinessSettingsController extends Controller
 
         if (!$this->business_settings->where(['key' => 'order_processing_message'])->first()) {
             $this->business_settings->insert([
-                'key'   => 'order_processing_message',
+                'key' => 'order_processing_message',
                 'value' => json_encode([
-                    'status'  => 0,
+                    'status' => 0,
                     'message' => '',
                 ]),
             ]);
@@ -1003,9 +1007,9 @@ class BusinessSettingsController extends Controller
 
         if (!$this->business_settings->where(['key' => 'out_for_delivery_message'])->first()) {
             $this->business_settings->insert([
-                'key'   => 'out_for_delivery_message',
+                'key' => 'out_for_delivery_message',
                 'value' => json_encode([
-                    'status'  => 0,
+                    'status' => 0,
                     'message' => '',
                 ]),
             ]);
@@ -1013,9 +1017,9 @@ class BusinessSettingsController extends Controller
 
         if (!$this->business_settings->where(['key' => 'order_delivered_message'])->first()) {
             $this->business_settings->insert([
-                'key'   => 'order_delivered_message',
+                'key' => 'order_delivered_message',
                 'value' => json_encode([
-                    'status'  => 0,
+                    'status' => 0,
                     'message' => '',
                 ]),
             ]);
@@ -1023,9 +1027,9 @@ class BusinessSettingsController extends Controller
 
         if (!$this->business_settings->where(['key' => 'delivery_boy_assign_message'])->first()) {
             $this->business_settings->insert([
-                'key'   => 'delivery_boy_assign_message',
+                'key' => 'delivery_boy_assign_message',
                 'value' => json_encode([
-                    'status'  => 0,
+                    'status' => 0,
                     'message' => '',
                 ]),
             ]);
@@ -1033,9 +1037,9 @@ class BusinessSettingsController extends Controller
 
         if (!$this->business_settings->where(['key' => 'delivery_boy_start_message'])->first()) {
             $this->business_settings->insert([
-                'key'   => 'delivery_boy_start_message',
+                'key' => 'delivery_boy_start_message',
                 'value' => json_encode([
-                    'status'  => 0,
+                    'status' => 0,
                     'message' => '',
                 ]),
             ]);
@@ -1043,9 +1047,9 @@ class BusinessSettingsController extends Controller
 
         if (!$this->business_settings->where(['key' => 'delivery_boy_delivered_message'])->first()) {
             $this->business_settings->insert([
-                'key'   => 'delivery_boy_delivered_message',
+                'key' => 'delivery_boy_delivered_message',
                 'value' => json_encode([
-                    'status'  => 0,
+                    'status' => 0,
                     'message' => '',
                 ]),
             ]);
@@ -1068,7 +1072,8 @@ class BusinessSettingsController extends Controller
                     'message' => '',
                 ]),
             ]);
-        }if (!$this->business_settings->where(['key' => 'failed_message'])->first()) {
+        }
+        if (!$this->business_settings->where(['key' => 'failed_message'])->first()) {
             $this->business_settings->insert([
                 'key' => 'failed_message',
                 'value' => json_encode([
@@ -1076,7 +1081,8 @@ class BusinessSettingsController extends Controller
                     'message' => '',
                 ]),
             ]);
-        }if (!$this->business_settings->where(['key' => 'canceled_message'])->first()) {
+        }
+        if (!$this->business_settings->where(['key' => 'canceled_message'])->first()) {
             $this->business_settings->insert([
                 'key' => 'canceled_message',
                 'value' => json_encode([
@@ -1134,7 +1140,33 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    private function updateOrInsertMessage($business_key, $status_key ,$default_message_key, $multi_lang_message_key, $request)
+    /**
+     * @param Request $request
+     * @return RedirectResponse
+     */
+    public function update_fcm_messages(Request $request): RedirectResponse
+    {
+        $this->updateOrInsertMessage('order_pending_message', 'pending_status', 'pending_message', 'order_pending_message', $request);
+        $this->updateOrInsertMessage('order_confirmation_msg', 'confirm_status', 'confirm_message', 'order_confirmation_message', $request);
+        $this->updateOrInsertMessage('order_processing_message', 'processing_status', 'processing_message', 'order_processing_message', $request);
+        $this->updateOrInsertMessage('out_for_delivery_message', 'out_for_delivery_status', 'out_for_delivery_message', 'order_out_for_delivery_message', $request);
+        $this->updateOrInsertMessage('order_delivered_message', 'delivered_status', 'delivered_message', 'order_delivered_message', $request);
+        $this->updateOrInsertMessage('delivery_boy_assign_message', 'delivery_boy_assign_status', 'delivery_boy_assign_message', 'assign_deliveryman_message', $request);
+        $this->updateOrInsertMessage('delivery_boy_start_message', 'delivery_boy_start_status', 'delivery_boy_start_message', 'deliveryman_start_message', $request);
+        $this->updateOrInsertMessage('delivery_boy_delivered_message', 'delivery_boy_delivered_status', 'delivery_boy_delivered_message', 'deliveryman_delivered_message', $request);
+        $this->updateOrInsertMessage('customer_notify_message', 'customer_notify_status', 'customer_notify_message', 'customer_notification_message', $request);
+        $this->updateOrInsertMessage('returned_message', 'returned_status', 'returned_message', 'return_order_message', $request);
+        $this->updateOrInsertMessage('failed_message', 'failed_status', 'failed_message', 'failed_order_message', $request);
+        $this->updateOrInsertMessage('canceled_message', 'canceled_status', 'canceled_message', 'canceled_order_message', $request);
+        $this->updateOrInsertMessage('deliveryman_order_processing_message', 'dm_order_processing_status', 'dm_order_processing_message', 'deliveryman_order_processing_message', $request);
+        $this->updateOrInsertMessage('add_fund_wallet_message', 'add_fund_status', 'add_fund_message', 'add_fund_wallet_message', $request);
+        $this->updateOrInsertMessage('add_fund_wallet_bonus_message', 'add_fund_bonus_status', 'add_fund_bonus_message', 'add_fund_wallet_bonus_message', $request);
+
+        Toastr::success(translate('Message updated!'));
+        return back();
+    }
+
+    private function updateOrInsertMessage($business_key, $status_key, $default_message_key, $multi_lang_message_key, $request)
     {
         $status = $request[$status_key] == 1 ? 1 : 0;
         $message = $request[$default_message_key];
@@ -1167,36 +1199,12 @@ class BusinessSettingsController extends Controller
         }
     }
 
-    /**
-     * @param Request $request
-     * @return RedirectResponse
-     */
-    public function update_fcm_messages(Request $request): RedirectResponse
-    {
-        $this->updateOrInsertMessage('order_pending_message', 'pending_status','pending_message' ,'order_pending_message', $request);
-        $this->updateOrInsertMessage('order_confirmation_msg', 'confirm_status','confirm_message' ,'order_confirmation_message', $request);
-        $this->updateOrInsertMessage('order_processing_message', 'processing_status','processing_message' ,'order_processing_message', $request);
-        $this->updateOrInsertMessage('out_for_delivery_message', 'out_for_delivery_status','out_for_delivery_message' ,'order_out_for_delivery_message', $request);
-        $this->updateOrInsertMessage('order_delivered_message', 'delivered_status','delivered_message' ,'order_delivered_message', $request);
-        $this->updateOrInsertMessage('delivery_boy_assign_message', 'delivery_boy_assign_status','delivery_boy_assign_message' ,'assign_deliveryman_message', $request);
-        $this->updateOrInsertMessage('delivery_boy_start_message', 'delivery_boy_start_status','delivery_boy_start_message' ,'deliveryman_start_message', $request);
-        $this->updateOrInsertMessage('delivery_boy_delivered_message', 'delivery_boy_delivered_status','delivery_boy_delivered_message' ,'deliveryman_delivered_message', $request);
-        $this->updateOrInsertMessage('customer_notify_message', 'customer_notify_status','customer_notify_message' ,'customer_notification_message', $request);
-        $this->updateOrInsertMessage('returned_message', 'returned_status','returned_message' ,'return_order_message', $request);
-        $this->updateOrInsertMessage('failed_message', 'failed_status','failed_message' ,'failed_order_message', $request);
-        $this->updateOrInsertMessage('canceled_message', 'canceled_status','canceled_message' ,'canceled_order_message', $request);
-        $this->updateOrInsertMessage('deliveryman_order_processing_message', 'dm_order_processing_status','dm_order_processing_message' ,'deliveryman_order_processing_message', $request);
-        $this->updateOrInsertMessage('add_fund_wallet_message', 'add_fund_status','add_fund_message' ,'add_fund_wallet_message', $request);
-        $this->updateOrInsertMessage('add_fund_wallet_bonus_message', 'add_fund_bonus_status','add_fund_bonus_message' ,'add_fund_wallet_bonus_message', $request);
-
-        Toastr::success(translate('Message updated!'));
-        return back();
-    }
-    public function map_api_setting(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function map_api_setting(): Factory|View|Application
     {
         return view('admin-views.business-settings.map-api');
     }
-    public function map_api_store(Request $request): \Illuminate\Http\RedirectResponse
+
+    public function map_api_store(Request $request): RedirectResponse
     {
 //        DB::table('business_settings')->updateOrInsert(['key' => 'map_api_key'], [
 //            'value' => $request['map_api_key'],
@@ -1212,12 +1220,12 @@ class BusinessSettingsController extends Controller
     }
 
     //recaptcha
-    public function recaptcha_index(Request $request): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function recaptcha_index(Request $request): Factory|View|Application
     {
         return view('admin-views.business-settings.recaptcha-index');
     }
 
-    public function recaptcha_update(Request $request): \Illuminate\Http\RedirectResponse
+    public function recaptcha_update(Request $request): RedirectResponse
     {
         DB::table('business_settings')->updateOrInsert(['key' => 'recaptcha'], [
             'key' => 'recaptcha',
@@ -1234,15 +1242,14 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    public function app_setting_index(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function app_setting_index(): Factory|View|Application
     {
         return View('admin-views.business-settings.app-setting-index');
     }
 
-    public function app_setting_update(Request $request): \Illuminate\Http\RedirectResponse
+    public function app_setting_update(Request $request): RedirectResponse
     {
-        if($request->platform == 'android')
-        {
+        if ($request->platform == 'android') {
             DB::table('business_settings')->updateOrInsert(['key' => 'play_store_config'], [
                 'value' => json_encode([
                     'status' => $request['play_store_status'],
@@ -1256,8 +1263,7 @@ class BusinessSettingsController extends Controller
             return back();
         }
 
-        if($request->platform == 'ios')
-        {
+        if ($request->platform == 'ios') {
             DB::table('business_settings')->updateOrInsert(['key' => 'app_store_config'], [
                 'value' => json_encode([
                     'status' => $request['app_store_status'],
@@ -1274,12 +1280,12 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    public function firebase_message_config_index(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function firebase_message_config_index(): Factory|View|Application
     {
         return View('admin-views.business-settings.firebase-config-index');
     }
 
-    public function firebase_message_config(Request $request): \Illuminate\Http\RedirectResponse
+    public function firebase_message_config(Request $request): RedirectResponse
     {
         DB::table('business_settings')->updateOrInsert(['key' => 'firebase_message_config'], [
             'key' => 'firebase_message_config',
@@ -1304,7 +1310,7 @@ class BusinessSettingsController extends Controller
     function firebase_message_config_file_gen()
     {
         //configs
-        $config=\App\CentralLogics\Helpers::get_business_settings('firebase_message_config');
+        $config = Helpers::get_business_settings('firebase_message_config');
         $apiKey = $config['apiKey'] ?? '';
         $authDomain = $config['authDomain'] ?? '';
         $projectId = $config['projectId'] ?? '';
@@ -1325,7 +1331,8 @@ class BusinessSettingsController extends Controller
             fwrite($old_file, $new_text);
             fclose($old_file);
 
-        }catch (\Exception $exception) {}
+        } catch (Exception $exception) {
+        }
 
     }
 
@@ -1347,7 +1354,7 @@ class BusinessSettingsController extends Controller
         }
     }
 
-    public function social_media_store(Request $request): \Illuminate\Http\JsonResponse
+    public function social_media_store(Request $request): JsonResponse
     {
         try {
             SocialMedia::updateOrInsert([
@@ -1361,7 +1368,7 @@ class BusinessSettingsController extends Controller
                 'success' => 1,
             ]);
 
-        } catch (\Exception $exception) {
+        } catch (Exception $exception) {
             return response()->json([
                 'error' => 1,
             ]);
@@ -1369,19 +1376,19 @@ class BusinessSettingsController extends Controller
 
     }
 
-    public function social_media_edit(Request $request): \Illuminate\Http\JsonResponse
+    public function social_media_edit(Request $request): JsonResponse
     {
         $data = SocialMedia::where('id', $request->id)->first();
         return response()->json($data);
     }
 
-    public function social_media_update(Request $request): \Illuminate\Http\JsonResponse
+    public function social_media_update(Request $request): JsonResponse
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|unique:social_medias',
         ]);
 
-        if ($validator->errors()->count()>0) {
+        if ($validator->errors()->count() > 0) {
             return response()->json(['error' => 1]);
         }
         $request->validate([
@@ -1395,14 +1402,14 @@ class BusinessSettingsController extends Controller
         return response()->json();
     }
 
-    public function social_media_delete(Request $request): \Illuminate\Http\JsonResponse
+    public function social_media_delete(Request $request): JsonResponse
     {
         $br = SocialMedia::find($request->id);
         $br->delete();
         return response()->json();
     }
 
-    public function social_media_status_update(Request $request): \Illuminate\Http\JsonResponse
+    public function social_media_status_update(Request $request): JsonResponse
     {
         SocialMedia::where(['id' => $request['id']])->update([
             'status' => $request['status'],
@@ -1412,15 +1419,15 @@ class BusinessSettingsController extends Controller
         ], 200);
     }
 
-    public function main_branch_setup(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function main_branch_setup(): Factory|View|Application
     {
         $main_branch = Branch::where(['id' => 1])->first();
         return view('admin-views.business-settings.main-branch-setup', compact('main_branch'));
     }
 
-    public function delivery_setup_update(Request $request): \Illuminate\Http\RedirectResponse
+    public function delivery_setup_update(Request $request): RedirectResponse
     {
-        if($request->delivery_charge == null) {
+        if ($request->delivery_charge == null) {
             $request->delivery_charge = $this->business_settings->where(['key' => 'delivery_charge'])->first()->value;
         }
 
@@ -1438,15 +1445,15 @@ class BusinessSettingsController extends Controller
                     'shipping_per_km.required' => translate('Shipping charge per Kilometer is required while shipping method is active'),
                 ]);
         }
-        if($request['min_shipping_charge'] == null) {
+        if ($request['min_shipping_charge'] == null) {
             $request['min_shipping_charge'] = Helpers::get_business_settings('delivery_management')['min_shipping_charge'];
         }
-        if($request['shipping_per_km'] == null) {
+        if ($request['shipping_per_km'] == null) {
             $request['shipping_per_km'] = Helpers::get_business_settings('delivery_management')['shipping_per_km'];
         }
         DB::table('business_settings')->updateOrInsert(['key' => 'delivery_management'], [
             'value' => json_encode([
-                'status'  => $request['shipping_status'],
+                'status' => $request['shipping_status'],
                 'min_shipping_charge' => $request['min_shipping_charge'],
                 'shipping_per_km' => $request['shipping_per_km'],
             ]),
@@ -1479,7 +1486,7 @@ class BusinessSettingsController extends Controller
         return view('admin-views.business-settings.social-media-login', compact('appleLoginService'));
     }
 
-    public function google_social_login($status): \Illuminate\Http\JsonResponse
+    public function google_social_login($status): JsonResponse
     {
         DB::table('business_settings')->updateOrInsert(['key' => 'google_social_login'], [
             'value' => $status
@@ -1487,7 +1494,7 @@ class BusinessSettingsController extends Controller
         return response()->json(['message' => 'Status updated']);
     }
 
-    public function facebook_social_login($status): \Illuminate\Http\JsonResponse
+    public function facebook_social_login($status): JsonResponse
     {
         DB::table('business_settings')->updateOrInsert(['key' => 'facebook_social_login'], [
             'value' => $status
@@ -1526,12 +1533,12 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    public function product_setup(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function product_setup(): Factory|View|Application
     {
         return view('admin-views.business-settings.product-setup-index');
     }
 
-    public function product_setup_update(Request $request): \Illuminate\Http\RedirectResponse
+    public function product_setup_update(Request $request): RedirectResponse
     {
         DB::table('business_settings')->updateOrInsert(['key' => 'minimum_stock_limit'], [
             'value' => $request['minimum_stock_limit'],
@@ -1561,12 +1568,12 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    public function cookies_setup(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function cookies_setup(): Factory|View|Application
     {
         return view('admin-views.business-settings.cookies-setup-index');
     }
 
-    public function cookies_setup_update(Request $request): \Illuminate\Http\RedirectResponse
+    public function cookies_setup_update(Request $request): RedirectResponse
     {
         DB::table('business_settings')->updateOrInsert(['key' => 'cookies'], [
             'value' => json_encode([
@@ -1613,13 +1620,13 @@ class BusinessSettingsController extends Controller
         return back();
     }
 
-    public function chat_index(): \Illuminate\Contracts\View\Factory|\Illuminate\Contracts\View\View|\Illuminate\Contracts\Foundation\Application
+    public function chat_index(): Factory|View|Application
     {
         if (!$this->business_settings->where(['key' => 'whatsapp'])->first()) {
             $this->business_settings->insert([
-                'key'   => 'whatsapp',
+                'key' => 'whatsapp',
                 'value' => json_encode([
-                    'status'  => 0,
+                    'status' => 0,
                     'number' => '',
                 ]),
             ]);
@@ -1627,9 +1634,9 @@ class BusinessSettingsController extends Controller
 
         if (!$this->business_settings->where(['key' => 'telegram'])->first()) {
             $this->business_settings->insert([
-                'key'   => 'telegram',
+                'key' => 'telegram',
                 'value' => json_encode([
-                    'status'  => 0,
+                    'status' => 0,
                     'user_name' => '',
                 ]),
             ]);
@@ -1637,9 +1644,9 @@ class BusinessSettingsController extends Controller
 
         if (!$this->business_settings->where(['key' => 'messenger'])->first()) {
             $this->business_settings->insert([
-                'key'   => 'messenger',
+                'key' => 'messenger',
                 'value' => json_encode([
-                    'status'  => 0,
+                    'status' => 0,
                     'user_name' => '',
                 ]),
             ]);
@@ -1649,25 +1656,25 @@ class BusinessSettingsController extends Controller
     }
 
 
-    public function update_chat(Request $request): \Illuminate\Http\RedirectResponse
+    public function update_chat(Request $request): RedirectResponse
     {
         DB::table('business_settings')->updateOrInsert(['key' => 'whatsapp'], [
             'value' => json_encode([
-                'status'  => $request['whatsapp_status'] == 1 ? 1 : 0,
+                'status' => $request['whatsapp_status'] == 1 ? 1 : 0,
                 'number' => $request['whatsapp_number'],
             ]),
         ]);
 
         DB::table('business_settings')->updateOrInsert(['key' => 'telegram'], [
             'value' => json_encode([
-                'status'  => $request['telegram_status'] == 1 ? 1 : 0,
+                'status' => $request['telegram_status'] == 1 ? 1 : 0,
                 'user_name' => $request['telegram_user_name'],
             ]),
         ]);
 
         DB::table('business_settings')->updateOrInsert(['key' => 'messenger'], [
             'value' => json_encode([
-                'status'  => $request['messenger_status'] == 1 ? 1 : 0,
+                'status' => $request['messenger_status'] == 1 ? 1 : 0,
                 'user_name' => $request['messenger_user_name'],
             ]),
         ]);
@@ -1681,12 +1688,12 @@ class BusinessSettingsController extends Controller
      */
     public function customer_setup(): Factory|View|Application
     {
-        $data = $this->business_settings->where('key','like','wallet_%')
-            ->orWhere('key','like','loyalty_%')
-            ->orWhere('key','like','ref_earning_%')
-            ->orWhere('key','like','add_fund_to_wallet%')
-            ->orWhere('key','like','ref_earning_%')->get();
-        $data = array_column($data->toArray(), 'value','key');
+        $data = $this->business_settings->where('key', 'like', 'wallet_%')
+            ->orWhere('key', 'like', 'loyalty_%')
+            ->orWhere('key', 'like', 'ref_earning_%')
+            ->orWhere('key', 'like', 'add_fund_to_wallet%')
+            ->orWhere('key', 'like', 'ref_earning_%')->get();
+        $data = array_column($data->toArray(), 'value', 'key');
 
         return view('admin-views.business-settings.customer-setup', compact('data'));
     }
@@ -1698,16 +1705,16 @@ class BusinessSettingsController extends Controller
     public function customer_setup_update(Request $request): RedirectResponse
     {
         $request->validate([
-            'loyalty_point_exchange_rate'=>'nullable|numeric',
-            'ref_earning_exchange_rate'=>'nullable|numeric',
-            'loyalty_point_minimum_point'=>'numeric|min:0|not_in:0',
+            'loyalty_point_exchange_rate' => 'nullable|numeric',
+            'ref_earning_exchange_rate' => 'nullable|numeric',
+            'loyalty_point_minimum_point' => 'numeric|min:0|not_in:0',
         ]);
 
         $this->business_settings->updateOrInsert(['key' => 'wallet_status'], [
-            'value' => $request['customer_wallet']??0
+            'value' => $request['customer_wallet'] ?? 0
         ]);
         $this->business_settings->updateOrInsert(['key' => 'loyalty_point_status'], [
-            'value' => $request['customer_loyalty_point']??0
+            'value' => $request['customer_loyalty_point'] ?? 0
         ]);
         $this->business_settings->updateOrInsert(['key' => 'ref_earning_status'], [
             'value' => $request['ref_earning_status'] ?? 0
@@ -1719,14 +1726,14 @@ class BusinessSettingsController extends Controller
             'value' => $request['ref_earning_exchange_rate'] ?? 0
         ]);
         $this->business_settings->updateOrInsert(['key' => 'loyalty_point_percent_on_item_purchase'], [
-            'value' => $request['loyalty_point_percent_on_item_purchase']??0
+            'value' => $request['loyalty_point_percent_on_item_purchase'] ?? 0
         ]);
         $this->business_settings->updateOrInsert(['key' => 'loyalty_point_minimum_point'], [
-            'value' => $request['minimun_transfer_point']??1
+            'value' => $request['minimun_transfer_point'] ?? 1
         ]);
 
         $this->business_settings->updateOrInsert(['key' => 'add_fund_to_wallet'], [
-            'value' => $request['add_fund_to_wallet']??0
+            'value' => $request['add_fund_to_wallet'] ?? 0
         ]);
 
         Toastr::success(translate('customer_settings_updated_successfully'));
@@ -1753,7 +1760,7 @@ class BusinessSettingsController extends Controller
      */
     public function order_setup_update(Request $request): RedirectResponse
     {
-       $status = $request->maximum_amount_for_cod_order_status ? 1 : 0;
+        $status = $request->maximum_amount_for_cod_order_status ? 1 : 0;
         DB::table('business_settings')->updateOrInsert(['key' => 'maximum_amount_for_cod_order_status'], [
             'value' => $status
         ]);
@@ -1777,17 +1784,18 @@ class BusinessSettingsController extends Controller
     {
         return view('admin-views.business-settings.firebase-otp-verification');
     }
+
     public function firebase_otp_verification_update(Request $request)
     {
         DB::table('business_settings')->updateOrInsert(['key' => 'firebase_otp_verification'], [
             'value' => json_encode([
-                'status'  => $request->has('status') ? 1 : 0,
+                'status' => $request->has('status') ? 1 : 0,
                 'web_api_key' => $request['web_api_key'],
             ]),
         ]);
 
-        if ($request->has('status')){
-            foreach (['twilio','nexmo','2factor','msg91', 'signal_wire'] as $gateway) {
+        if ($request->has('status')) {
+            foreach (['twilio', 'nexmo', '2factor', 'msg91', 'signal_wire'] as $gateway) {
                 $keep = AddonSetting::where(['key_name' => $gateway, 'settings_type' => 'sms_config'])->first();
                 if (isset($keep)) {
                     $hold = $keep->live_values;

@@ -10,7 +10,6 @@ use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -19,7 +18,9 @@ class AttributeController extends Controller
     public function __construct(
         private Attribute   $attribute,
         private Translation $translation
-    ){}
+    )
+    {
+    }
 
     /**
      * @param Request $request
@@ -103,7 +104,7 @@ class AttributeController extends Controller
      * @param $id
      * @return RedirectResponse
      */
-    public function update(Request $request, $id): \Illuminate\Http\RedirectResponse
+    public function update(Request $request, $id): RedirectResponse
     {
         $request->validate([
             'name' => 'required|unique:attributes,name,' . $request->id,

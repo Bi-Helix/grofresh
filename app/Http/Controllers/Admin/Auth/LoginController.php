@@ -4,14 +4,16 @@ namespace App\Http\Controllers\Admin\Auth;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Mail\Admin\LoginAlert;
 use App\Models\RegisterDevice;
-use Brian2694\Toastr\Facades\Toastr;
+use Exception;
 use Gregwar\Captcha\CaptchaBuilder;
 use Gregwar\Captcha\PhraseBuilder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Session;
 use Jenssegers\Agent\Facades\Agent;
+use function file_get_contents;
 
 class LoginController extends Controller
 {
@@ -33,7 +35,7 @@ class LoginController extends Controller
         $builder->build($width = 100, $height = 40, $font = null);
         $phrase = $builder->getPhrase();
 
-        if(Session::has('default_captcha_code')) {
+        if (Session::has('default_captcha_code')) {
             Session::forget('default_captcha_code');
         }
         Session::put('default_captcha_code', $phrase);
@@ -69,7 +71,7 @@ class LoginController extends Controller
                         $secret_key = Helpers::get_business_settings('recaptcha')['secret_key'];
                         $response = $value;
                         $url = 'https://www.google.com/recaptcha/api/siteverify?secret=' . $secret_key . '&response=' . $response;
-                        $response = \file_get_contents($url);
+                        $response = file_get_contents($url);
                         $response = json_decode($response);
                         if (!$response->success) {
                             $fail(\App\CentralLogics\translate('ReCaptcha Failed'));
@@ -84,7 +86,7 @@ class LoginController extends Controller
             }
         }
 
-        if(Session::has('default_captcha_code')) {
+        if (Session::has('default_captcha_code')) {
             Session::forget('default_captcha_code');
         }
         //end recaptcha validation
@@ -93,7 +95,7 @@ class LoginController extends Controller
             $unique_identifier = md5($ip . $browser_name . $browser_version . $device_type . $device_platform);
 
             $registered_device = RegisterDevice::where(['unique_identifier' => $unique_identifier, 'user_type' => 'admin'])->first();
-            if (!isset($registered_device)){
+            if (!isset($registered_device)) {
                 $register_device = new RegisterDevice();
                 $register_device->user_id = auth('admin')->user()->id;
                 $register_device->user_type = 'admin';
@@ -109,9 +111,9 @@ class LoginController extends Controller
                 try {
                     $emailServices = Helpers::get_business_settings('mail_config');
                     if (isset($emailServices['status']) && $emailServices['status'] == 1) {
-                        Mail::to(auth('admin')->user()->email)->send(new \App\Mail\Admin\LoginAlert($request->ip()));
+                        Mail::to(auth('admin')->user()->email)->send(new LoginAlert($request->ip()));
                     }
-                } catch (\Exception $e) {
+                } catch (Exception $e) {
                 }
 
             }

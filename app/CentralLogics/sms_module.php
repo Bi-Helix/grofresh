@@ -2,9 +2,7 @@
 
 namespace App\CentralLogics;
 
-use App\Model\BusinessSetting;
-use App\Models\AddonSetting;
-use Illuminate\Support\Facades\Config;
+use Exception;
 use Illuminate\Support\Facades\DB;
 use Twilio\Rest\Client;
 
@@ -41,6 +39,17 @@ class SMS_module
         return 'not_found';
     }
 
+    public static function get_settings($name)
+    {
+        $config = DB::table('addon_settings')->where('key_name', $name)
+            ->where('settings_type', 'sms_config')->first();
+
+        if (isset($config) && !is_null($config->live_values)) {
+            return json_decode($config->live_values, true);
+        }
+        return null;
+    }
+
     public static function twilio($receiver, $otp): string
     {
         $config = self::get_settings('twilio');
@@ -59,7 +68,7 @@ class SMS_module
                         )
                     );
                 $response = 'success';
-            } catch (\Exception $exception) {
+            } catch (Exception $exception) {
                 $response = 'error';
             }
         }
@@ -78,7 +87,7 @@ class SMS_module
                 curl_setopt($ch, CURLOPT_URL, 'https://rest.nexmo.com/sms/json');
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                 curl_setopt($ch, CURLOPT_POST, 1);
-                curl_setopt($ch, CURLOPT_POSTFIELDS, "from=".$config['from']."&text=".$message."&to=".$receiver."&api_key=".$config['api_key']."&api_secret=".$config['api_secret']);
+                curl_setopt($ch, CURLOPT_POSTFIELDS, "from=" . $config['from'] . "&text=" . $message . "&to=" . $receiver . "&api_key=" . $config['api_key'] . "&api_secret=" . $config['api_secret']);
 
                 $headers = array();
                 $headers[] = 'Content-Type: application/x-www-form-urlencoded';
@@ -90,7 +99,7 @@ class SMS_module
                 }
                 curl_close($ch);
                 $response = 'success';
-            } catch (\Exception $exception) {
+            } catch (Exception $exception) {
                 $response = 'error';
             }
         }
@@ -190,16 +199,5 @@ class SMS_module
 
         }
         return $response;
-    }
-
-    public static function get_settings($name)
-    {
-        $config = DB::table('addon_settings')->where('key_name', $name)
-            ->where('settings_type', 'sms_config')->first();
-
-        if (isset($config) && !is_null($config->live_values)) {
-            return json_decode($config->live_values, true);
-        }
-        return null;
     }
 }

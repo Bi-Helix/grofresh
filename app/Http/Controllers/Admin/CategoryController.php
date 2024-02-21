@@ -10,18 +10,18 @@ use Brian2694\Toastr\Facades\Toastr;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
-use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 
 class CategoryController extends Controller
 {
     public function __construct(
         private Category $category
-    ){}
+    )
+    {
+    }
 
     /**
      * @param Request $request
@@ -204,7 +204,7 @@ class CategoryController extends Controller
     public function update(Request $request, $id): RedirectResponse
     {
         $request->validate([
-            'name' =>'required|unique:categories,name,'.$request->id
+            'name' => 'required|unique:categories,name,' . $request->id
         ]);
 
         foreach ($request->name as $name) {

@@ -4,8 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Mail\Branch\BranchChangeStatus;
+use App\Mail\Branch\BranchDelete;
+use App\Mail\Branch\BranchRegistration;
 use App\Model\Branch;
 use Brian2694\Toastr\Facades\Toastr;
+use Exception;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
@@ -18,7 +22,9 @@ class   BranchController extends Controller
 {
     public function __construct(
         private Branch $branch
-    ){}
+    )
+    {
+    }
 
     /**
      * @param Request $request
@@ -28,20 +34,19 @@ class   BranchController extends Controller
     {
         $query_param = [];
         $search = $request['search'];
-        if($request->has('search'))
-        {
+        if ($request->has('search')) {
             $key = explode(' ', $request['search']);
-           $branches = $this->branch->where(function ($q) use ($key) {
-                        foreach ($key as $value) {
-                            $q->orWhere('name', 'like', "%{$value}%");
-                        }
+            $branches = $this->branch->where(function ($q) use ($key) {
+                foreach ($key as $value) {
+                    $q->orWhere('name', 'like', "%{$value}%");
+                }
             })->orderBy('id', 'desc');
             $query_param = ['search' => $request['search']];
-        }else{
-           $branches = $this->branch->orderBy('id', 'desc');
+        } else {
+            $branches = $this->branch->orderBy('id', 'desc');
         }
         $branches = $branches->paginate(Helpers::getPagination())->appends($query_param);
-        return view('admin-views.branch.add-new', compact('branches','search'));
+        return view('admin-views.branch.add-new', compact('branches', 'search'));
     }
 
     /**
@@ -52,8 +57,7 @@ class   BranchController extends Controller
     {
         $query_param = [];
         $search = $request['search'];
-        if($request->has('search'))
-        {
+        if ($request->has('search')) {
             $key = explode(' ', $request['search']);
             $branches = $this->branch->where(function ($q) use ($key) {
                 foreach ($key as $value) {
@@ -62,11 +66,11 @@ class   BranchController extends Controller
                 }
             })->orderBy('id', 'desc');
             $query_param = ['search' => $request['search']];
-        }else{
+        } else {
             $branches = $this->branch->orderBy('id', 'desc');
         }
         $branches = $branches->paginate(Helpers::getPagination())->appends($query_param);
-        return view('admin-views.branch.list', compact('branches','search'));
+        return view('admin-views.branch.list', compact('branches', 'search'));
     }
 
     /**
@@ -114,9 +118,9 @@ class   BranchController extends Controller
         try {
             $emailServices = Helpers::get_business_settings('mail_config');
             if (isset($emailServices['status']) && $emailServices['status'] == 1) {
-                Mail::to($branch->email)->send(new \App\Mail\Branch\BranchRegistration($branch, $request->password));
+                Mail::to($branch->email)->send(new BranchRegistration($branch, $request->password));
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
         }
 
         Toastr::success(translate('Branch added successfully!'));
@@ -142,7 +146,7 @@ class   BranchController extends Controller
     {
         $request->validate([
             'name' => 'required|max:255',
-            'email' => ['required', 'unique:branches,email,'.$id.',id'],
+            'email' => ['required', 'unique:branches,email,' . $id . ',id'],
             'longitude' => 'required',
             'latitude' => 'required',
         ], [
@@ -176,19 +180,19 @@ class   BranchController extends Controller
     public function delete(Request $request): RedirectResponse
     {
         $branch = $this->branch->where('id', $request->id)->whereNotIn('id', [1])->first();
-        if ($branch){
+        if ($branch) {
             $branch->delete();
 
             try {
                 $emailServices = Helpers::get_business_settings('mail_config');
                 if (isset($emailServices['status']) && $emailServices['status'] == 1) {
-                    Mail::to($branch->email)->send(new \App\Mail\Branch\BranchDelete($branch));
+                    Mail::to($branch->email)->send(new BranchDelete($branch));
                 }
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
             }
 
             Toastr::success(translate('Branch removed!'));
-        }else{
+        } else {
             Toastr::warning(translate('Access denied!'));
         }
         return back();
@@ -207,9 +211,9 @@ class   BranchController extends Controller
         try {
             $emailServices = Helpers::get_business_settings('mail_config');
             if (isset($emailServices['status']) && $emailServices['status'] == 1) {
-                Mail::to($branch->email)->send(new \App\Mail\Branch\BranchChangeStatus($branch));
+                Mail::to($branch->email)->send(new BranchChangeStatus($branch));
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
         }
         Toastr::success(translate('Branch status updated!'));
         return back();

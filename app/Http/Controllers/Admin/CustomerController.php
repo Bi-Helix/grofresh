@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Admin;
 
 use App\CentralLogics\Helpers;
 use App\Http\Controllers\Controller;
+use App\Mail\Customer\CustomerChangeStatus;
+use App\Mail\Customer\CustomerDelete;
 use App\Model\BusinessSetting;
 use App\Model\Conversation;
 use App\Model\Newsletter;
@@ -14,13 +16,13 @@ use Box\Spout\Common\Exception\IOException;
 use Box\Spout\Common\Exception\UnsupportedTypeException;
 use Box\Spout\Writer\Exception\WriterNotOpenedException;
 use Brian2694\Toastr\Facades\Toastr;
+use Exception;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\View\Factory;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Rap2hpoutre\FastExcel\FastExcel;
@@ -29,12 +31,14 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class CustomerController extends Controller
 {
     public function __construct(
-        private User $user,
-        private Order $order,
-        private Newsletter $newsletter,
+        private User         $user,
+        private Order        $order,
+        private Newsletter   $newsletter,
         private BusinessSetting $business_setting,
         private Conversation $conversation
-    ){}
+    )
+    {
+    }
 
     /**
      * @param Request $request
@@ -44,25 +48,24 @@ class CustomerController extends Controller
     {
         $query_param = [];
         $search = $request['search'];
-        if($request->has('search'))
-        {
+        if ($request->has('search')) {
             $key = explode(' ', $request['search']);
             $customers = $this->user->with(['orders'])->
-                    where(function ($q) use ($key) {
-                        foreach ($key as $value) {
-                            $q->orWhere('f_name', 'like', "%{$value}%")
-                                ->orWhere('l_name', 'like', "%{$value}%")
-                                ->orWhere('phone', 'like', "%{$value}%")
-                                ->orWhere('email', 'like', "%{$value}%");
-                        }
+            where(function ($q) use ($key) {
+                foreach ($key as $value) {
+                    $q->orWhere('f_name', 'like', "%{$value}%")
+                        ->orWhere('l_name', 'like', "%{$value}%")
+                        ->orWhere('phone', 'like', "%{$value}%")
+                        ->orWhere('email', 'like', "%{$value}%");
+                }
             });
             $query_param = ['search' => $request['search']];
-        }else{
+        } else {
             $customers = $this->user->with(['orders']);
         }
         $customers = $customers->latest()->paginate(Helpers::getPagination())->appends($query_param);
 
-        return view('admin-views.customer.list', compact('customers','search'));
+        return view('admin-views.customer.list', compact('customers', 'search'));
     }
 
     /**
@@ -72,7 +75,7 @@ class CustomerController extends Controller
     public function search(Request $request): JsonResponse
     {
         $key = explode(' ', $request['search']);
-        $customers=$this->user->where(function ($q) use ($key) {
+        $customers = $this->user->where(function ($q) use ($key) {
             foreach ($key as $value) {
                 $q->orWhere('f_name', 'like', "%{$value}%")
                     ->orWhere('l_name', 'like', "%{$value}%")
@@ -81,7 +84,7 @@ class CustomerController extends Controller
             }
         })->get();
         return response()->json([
-            'view'=>view('admin-views.customer.partials._table',compact('customers'))->render()
+            'view' => view('admin-views.customer.partials._table', compact('customers'))->render()
         ]);
     }
 
@@ -96,8 +99,7 @@ class CustomerController extends Controller
         if (isset($customer)) {
             $query_param = [];
             $search = $request['search'];
-            if($request->has('search'))
-            {
+            if ($request->has('search')) {
                 $key = explode(' ', $request['search']);
                 $orders = $this->order->where(['user_id' => $id])
                     ->where(function ($q) use ($key) {
@@ -105,9 +107,9 @@ class CustomerController extends Controller
                             $q->orWhere('id', 'like', "%{$value}%")
                                 ->orWhere('order_amount', 'like', "%{$value}%");
                         }
-                });
+                    });
                 $query_param = ['search' => $request['search']];
-            }else{
+            } else {
                 $orders = $this->order->where(['user_id' => $id]);
             }
             $orders = $orders->latest()->paginate(Helpers::getPagination())->appends($query_param);
@@ -155,8 +157,8 @@ class CustomerController extends Controller
         }
 
         $conversations = $this->conversation->where('user_id', $request->id)->get();
-        foreach ($conversations as $conversation){
-            if ($conversation->checked == 0){
+        foreach ($conversations as $conversation) {
+            if ($conversation->checked == 0) {
                 $conversation->checked = 1;
                 $conversation->save();
             }
@@ -167,10 +169,10 @@ class CustomerController extends Controller
         try {
             $emailServices = Helpers::get_business_settings('mail_config');
             if (isset($emailServices['status']) && $emailServices['status'] == 1 && isset($customer['email'])) {
-                $name = $customer->f_name. ' '. $customer->l_name;
-                Mail::to($customer->email)->send(new \App\Mail\Customer\CustomerDelete($name));
+                $name = $customer->f_name . ' ' . $customer->l_name;
+                Mail::to($customer->email)->send(new CustomerDelete($name));
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
         }
 
         Toastr::success(translate('Customer removed!'));
@@ -190,9 +192,9 @@ class CustomerController extends Controller
         try {
             $emailServices = Helpers::get_business_settings('mail_config');
             if (isset($emailServices['status']) && $emailServices['status'] == 1 && isset($user['email'])) {
-                Mail::to($user->email)->send(new \App\Mail\Customer\CustomerChangeStatus($user));
+                Mail::to($user->email)->send(new CustomerChangeStatus($user));
             }
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
         }
 
         Toastr::success(translate('Block status updated!'));
@@ -215,20 +217,20 @@ class CustomerController extends Controller
         $search = $request['search'];
 
         $customers = $this->user->when($request->has('search'), function ($query) use ($request) {
-                $key = explode(' ', $request['search']);
-                $query->where(function ($q) use ($key) {
-                    foreach ($key as $value) {
-                        $q->orWhere('f_name', 'like', "%{$value}%")
-                            ->orWhere('l_name', 'like', "%{$value}%")
-                            ->orWhere('phone', 'like', "%{$value}%")
-                            ->orWhere('email', 'like', "%{$value}%");
-                    }
-                });
-                $query_param = ['search' => $request['search']];
-            })
+            $key = explode(' ', $request['search']);
+            $query->where(function ($q) use ($key) {
+                foreach ($key as $value) {
+                    $q->orWhere('f_name', 'like', "%{$value}%")
+                        ->orWhere('l_name', 'like', "%{$value}%")
+                        ->orWhere('phone', 'like', "%{$value}%")
+                        ->orWhere('email', 'like', "%{$value}%");
+                }
+            });
+            $query_param = ['search' => $request['search']];
+        })
             ->get();
 
-        foreach($customers as $customer){
+        foreach ($customers as $customer) {
 
             $storage[] = [
                 'first_name' => $customer['f_name'],

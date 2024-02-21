@@ -1,5 +1,7 @@
 <?php
+
 namespace App\CentralLogics;
+
 use App\Model\Coupon;
 use App\Model\Order;
 

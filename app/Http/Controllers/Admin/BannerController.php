@@ -19,10 +19,12 @@ use Illuminate\Support\Facades\Storage;
 class BannerController extends Controller
 {
     public function __construct(
-       private Banner $banner,
-       private Product $product,
-       private Category $category
-    ){}
+        private Banner   $banner,
+        private Product  $product,
+        private Category $category
+    )
+    {
+    }
 
     /**
      * @param Request $request
@@ -32,8 +34,7 @@ class BannerController extends Controller
     {
         $query_param = [];
         $search = $request['search'];
-        if($request->has('search'))
-        {
+        if ($request->has('search')) {
             $key = explode(' ', $request['search']);
             $banners = $this->banner->where(function ($q) use ($key) {
                 foreach ($key as $value) {
@@ -42,15 +43,15 @@ class BannerController extends Controller
                 }
             })->orderBy('id', 'desc');
             $query_param = ['search' => $request['search']];
-        }else{
+        } else {
             $banners = $this->banner->orderBy('id', 'desc');
         }
         $banners = $banners->paginate(Helpers::getPagination())->appends($query_param);
 
 
         $products = $this->product->orderBy('name')->get();
-        $categories = $this->category->where(['parent_id'=>0])->orderBy('name')->get();
-        return view('admin-views.banner.index', compact('products', 'categories', 'banners','search'));
+        $categories = $this->category->where(['parent_id' => 0])->orderBy('name')->get();
+        return view('admin-views.banner.index', compact('products', 'categories', 'banners', 'search'));
     }
 
     /**
@@ -61,8 +62,7 @@ class BannerController extends Controller
     {
         $query_param = [];
         $search = $request['search'];
-        if($request->has('search'))
-        {
+        if ($request->has('search')) {
             $key = explode(' ', $request['search']);
             $banners = $this->banner->where(function ($q) use ($key) {
                 foreach ($key as $value) {
@@ -71,11 +71,11 @@ class BannerController extends Controller
                 }
             })->orderBy('id', 'desc');
             $query_param = ['search' => $request['search']];
-        }else{
+        } else {
             $banners = $this->banner->orderBy('id', 'desc');
         }
         $banners = $banners->paginate(Helpers::getPagination())->appends($query_param);
-        return view('admin-views.banner.list', compact('banners','search'));
+        return view('admin-views.banner.list', compact('banners', 'search'));
     }
 
     /**
@@ -87,9 +87,9 @@ class BannerController extends Controller
         $request->validate([
             'title' => 'required|max:255',
             'image' => 'required',
-        ],[
-            'title.required'=>translate('Title is required'),
-            'image.required'=>translate('Image is required'),
+        ], [
+            'title.required' => translate('Title is required'),
+            'image.required' => translate('Image is required'),
         ]);
 
         $banner = $this->banner;
@@ -113,7 +113,7 @@ class BannerController extends Controller
     {
         $products = $this->product->orderBy('name')->get();
         $banner = $this->banner->find($id);
-        $categories = $this->category->where(['parent_id'=>0])->orderBy('name')->get();
+        $categories = $this->category->where(['parent_id' => 0])->orderBy('name')->get();
         return view('admin-views.banner.edit', compact('banner', 'products', 'categories'));
     }
 
